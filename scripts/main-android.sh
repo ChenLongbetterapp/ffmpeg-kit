@@ -54,13 +54,22 @@ if [[ -n ${FFMPEG_KIT_LTS_BUILD} ]] && [[ ${API} -lt 18 ]]; then
   build_android_lts_support
 fi
 
+# Initialize OK variables to prevent undefined variable errors
+initialize_ok_variables
+
 # BUILD ENABLED LIBRARIES AND THEIR DEPENDENCIES
 let completed=0
-while [ ${#enabled_library_list[@]} -gt $completed ]; do
+let loop_count=0
+let max_loops=1000  # Prevent infinite loops
+
+while [ ${#enabled_library_list[@]} -gt $completed ] && [ $loop_count -lt $max_loops ]; do
+  ((loop_count++))
+  echo -e "DEBUG: Loop iteration ${loop_count}, completed: ${completed}, total libraries: ${#enabled_library_list[@]}\n" 1>>"${BASEDIR}"/build.log 2>&1
   for library in "${enabled_library_list[@]}"; do
     let run=0
     case $library in
     fontconfig)
+      echo -e "DEBUG: Checking fontconfig dependencies: OK_libuuid=${OK_libuuid}, OK_expat=${OK_expat}, OK_libiconv=${OK_libiconv}, OK_freetype=${OK_freetype}\n" 1>>"${BASEDIR}"/build.log 2>&1
       if [[ $OK_libuuid -eq 1 ]] && [[ $OK_expat -eq 1 ]] && [[ $OK_libiconv -eq 1 ]] && [[ $OK_freetype -eq 1 ]]; then
         run=1
       fi
@@ -165,6 +174,9 @@ while [ ${#enabled_library_list[@]} -gt $completed ]; do
     REBUILD_FLAG=$(echo "REBUILD_${library}" | sed "s/\-/\_/g")
     DEPENDENCY_REBUILT_FLAG=$(echo "DEPENDENCY_REBUILT_${library}" | sed "s/\-/\_/g")
 
+    # ADD DEBUG INFORMATION
+    echo -e "DEBUG: Library: ${library}, run=${run}, BUILD_COMPLETED_FLAG=${BUILD_COMPLETED_FLAG}, value=${!BUILD_COMPLETED_FLAG}\n" 1>>"${BASEDIR}"/build.log 2>&1
+
     if [[ $run -eq 1 ]] && [[ "${!BUILD_COMPLETED_FLAG}" != "1" ]]; then
       LIBRARY_IS_INSTALLED=$(library_is_installed "${LIB_INSTALL_BASE}" "${library}")
 
@@ -201,6 +213,13 @@ while [ ${#enabled_library_list[@]} -gt $completed ]; do
       echo -e "INFO: Skipping $library, dependencies built=$run, already built=${!BUILD_COMPLETED_FLAG}\n" 1>>"${BASEDIR}"/build.log 2>&1
     fi
   done
+
+  # Check if we're stuck in an infinite loop
+  if [ $loop_count -ge $max_loops ]; then
+    echo -e "ERROR: Build process stuck in infinite loop after ${max_loops} iterations. Exiting.\n" 1>>"${BASEDIR}"/build.log 2>&1
+    echo -e "ERROR: Build process stuck in infinite loop after ${max_loops} iterations. Exiting.\n"
+    exit 1
+  fi
 done
 
 # BUILD CUSTOM LIBRARIES

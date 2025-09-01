@@ -338,6 +338,13 @@ if [ "$GPL_ENABLED" == "yes" ]; then
   CONFIGURE_POSTFIX+=" --enable-gpl"
 fi
 
+# CHECK FOR MUTUALLY EXCLUSIVE LIBRARIES
+# GnuTLS and OpenSSL cannot be enabled at the same time
+if [[ ${ENABLED_LIBRARIES[LIBRARY_GNUTLS]} -eq 1 ]] && [[ ${ENABLED_LIBRARIES[LIBRARY_OPENSSL]} -eq 1 ]]; then
+  echo -e "WARNING: Both GnuTLS and OpenSSL are enabled. Disabling OpenSSL to avoid conflict.\n" 1>>"${BASEDIR}"/build.log 2>&1
+  CONFIGURE_POSTFIX+=" --disable-openssl"
+fi
+
 export LDFLAGS+=" -L${ANDROID_NDK_ROOT}/platforms/android-${API}/arch-${TOOLCHAIN_ARCH}/usr/lib"
 
 # LINKING WITH ANDROID LTS SUPPORT LIBRARY IS NECESSARY FOR API < 18

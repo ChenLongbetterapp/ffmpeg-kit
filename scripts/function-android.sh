@@ -16,6 +16,19 @@ enable_default_android_libraries() {
   ENABLED_LIBRARIES[LIBRARY_CPU_FEATURES]=1
 }
 
+# Initialize all OK_ variables to prevent undefined variable errors
+initialize_ok_variables() {
+  # Initialize all OK_ variables to 0 (not built)
+  for library in {0..61}; do
+    library_name=$(get_library_name ${library})
+    if [[ -n "${library_name}" ]]; then
+      ok_var_name="OK_${library_name//-/_}"
+      declare "${ok_var_name}=0"
+      echo -e "DEBUG: Initialized ${ok_var_name}=0\n" 1>>"${BASEDIR}"/build.log 2>&1
+    fi
+  done
+}
+
 get_ffmpeg_kit_version() {
   local FFMPEG_KIT_VERSION=$(grep '#define FFMPEG_KIT_VERSION' "${BASEDIR}"/android/ffmpeg-kit-android-lib/src/main/cpp/ffmpegkit.h | grep -Eo '\".*\"' | sed -e 's/\"//g')
 
